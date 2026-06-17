@@ -1,6 +1,6 @@
 # pigeon 🐦
 
-Send WhatsApp messages from your terminal.
+Send WhatsApp and Instagram DMs from your terminal.
 
 ```
            .-''-.
@@ -22,14 +22,14 @@ Send WhatsApp messages from your terminal.
               -./--' `
 ```
 
-> Fuzzy name matching, session persistence, interactive chat — all from your shell.
+> Fuzzy name matching, session persistence, interactive chat — WhatsApp and Instagram from your shell.
 
 ---
 
 ## Requirements
 
 - Node.js 18+
-- Google Chrome (uses your system install — no separate download)
+- Google Chrome (uses your system install)
 
 ## Install
 
@@ -40,7 +40,11 @@ npm install
 npm link
 ```
 
-## Setup
+---
+
+## WhatsApp
+
+### Setup
 
 Link your WhatsApp account once by scanning a QR code:
 
@@ -48,45 +52,76 @@ Link your WhatsApp account once by scanning a QR code:
 pigeon setup
 ```
 
-Open WhatsApp on your phone → Settings → Linked Devices → Link a Device, then scan. Your session is saved to `~/.pigeon/session/` — you won't need to scan again.
+Open WhatsApp on your phone → Settings → Linked Devices → Link a Device, then scan. Your session is saved to `~/.pigeon/session/` and shows up as **"pigeon"** in your linked devices list.
 
-## Usage
+### Usage
 
 ```bash
-pigeon status                        # check if linked
-pigeon send "Gauri" "hey!"           # send a one-shot message
-pigeon chat "Gauri"                  # interactive chat (incoming messages on)
-pigeon chat "Gauri" --no-listen      # send-only mode
+pigeon status                             # check if linked
+pigeon send "John Smith" "hey!"           # send a one-shot message
+pigeon chat "John Smith"                  # interactive chat (incoming messages on)
+pigeon chat "John Smith" --no-listen      # send-only mode
 ```
-
-### Name matching
-
-Names are matched fuzzily against your WhatsApp contacts — you don't need to type the full name. `"gau"` will match `"Gauri"`, `"Gauri Sharma"`, etc. Exact matches take priority over fuzzy ones.
 
 ### Chat mode
 
 ```
-Chatting with Gauri — Ctrl+C to exit
+Chatting with John Smith — Ctrl+C to exit
 
 You: hey what's up
-Gauri: not much, you?
+John Smith: not much, you?
 You: just testing something cool
 ```
 
-Incoming messages appear inline as they arrive. Use `--no-listen` to disable if you only want to send.
+---
+
+## Instagram
+
+### Setup
+
+Log in with your Instagram credentials:
+
+```bash
+pigeon ig setup
+```
+
+Session is saved to `~/.pigeon/ig-session.json`.
+
+### Usage
+
+```bash
+pigeon ig status                          # check if logged in
+pigeon ig send "johnsmith" "hey!"         # send a DM
+pigeon ig chat "johnsmith"               # interactive DM chat
+```
+
+---
+
+## Name matching
+
+WhatsApp names are matched fuzzily against your contacts — `"john"` matches `"John Smith"`, `"Johnny"`, etc. Instagram matches by exact username, with a search fallback.
+
+---
 
 ## How it works
 
-Pigeon uses [whatsapp-web.js](https://github.com/pedroslopez/whatsapp-web.js) to run a headless Chrome instance that connects to WhatsApp Web. Your session is stored locally — nothing goes through any external server.
+- **WhatsApp** — uses [whatsapp-web.js](https://github.com/pedroslopez/whatsapp-web.js) to run a headless Chrome session connected to WhatsApp Web. Nothing goes through any external server.
+- **Instagram** — uses [instagram-private-api](https://github.com/dilame/instagram-private-api), the same private API the Instagram mobile app uses.
 
-It shows up as **"pigeon"** in your WhatsApp Linked Devices list.
+Sessions are stored locally in `~/.pigeon/`.
+
+---
 
 ## Commands
 
 | Command | Description |
 |---|---|
-| `pigeon status` | Check if your session is active |
-| `pigeon setup` | Scan QR code to link your account |
-| `pigeon send "Name" "msg"` | Send a message and exit |
-| `pigeon chat "Name"` | Open interactive chat |
-| `pigeon chat "Name" --no-listen` | Send-only chat mode |
+| `pigeon status` | Check WhatsApp session |
+| `pigeon setup` | Link WhatsApp account (QR scan) |
+| `pigeon send "Name" "msg"` | Send a WhatsApp message |
+| `pigeon chat "Name"` | Interactive WhatsApp chat |
+| `pigeon chat "Name" --no-listen` | Send-only WhatsApp chat |
+| `pigeon ig status` | Check Instagram session |
+| `pigeon ig setup` | Log in to Instagram |
+| `pigeon ig send "user" "msg"` | Send an Instagram DM |
+| `pigeon ig chat "user"` | Interactive Instagram DM chat |
