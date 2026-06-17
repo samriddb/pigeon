@@ -68,9 +68,10 @@ pigeon chat "John Smith" --no-listen      # send-only mode
 ```
 Chatting with John Smith — Ctrl+C to exit
 
-You: hey what's up
-John Smith: not much, you?
-You: just testing something cool
+You: knock knock whos there
+John Smith: moo
+You: moo who
+John Smith: why are you crying
 ```
 
 ---
