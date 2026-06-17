@@ -1,10 +1,11 @@
 #!/usr/bin/env node
 
 const { Client, LocalAuth } = require('whatsapp-web.js');
-const qrcode = require('qrcode-terminal');
+const QRCode = require('qrcode');
 const readline = require('readline');
 const path = require('path');
 const os = require('os');
+const fs = require('fs');
 
 const SESSION_PATH = path.join(os.homedir(), '.pigeon', 'session');
 
@@ -23,17 +24,23 @@ const C = {
 function logo() {
   const { reset: R, lgray: lg, gray: g, cyan: cy, yellow: y, orange: o } = C;
   return [
-    `${lg}       ___${R}`,
-    `${lg}    ,-'   \`-.${R}`,
-    `${lg}   /  ${cy}◉${R}${lg}   ${cy}◉${R}${lg}  \\${R}`,
-    `${lg}  (    ${g}~~~${R}${lg}    )${y}>  ✉${R}`,
-    `${lg}   \\  ${g}'---'${R}${lg}  /${R}`,
-    `${lg}    \`-------'${R}`,
-    `${o}     /|   |\\${R}`,
-    `${o}    / |   | \\${R}`,
-    `${o}       | |${R}`,
-    `${o}      /   \\${R}`,
-    `${o}     ·     ·${R}`,
+    `${lg}           .-''-.${R}`,
+    `${lg}          / ,    \\${R}`,
+    `${lg}       .-'\`${cy}(o)${R}${lg}    ;${R}`,
+    `${lg}      '-==.       |${R}`,
+    `${lg}           \`.\\_...${g}-;-.${R}`,
+    `${lg}            )--"""${g}   \`-.${R}`,
+    `${lg}           /   .${g}        \`-.${R}`,
+    `${lg}          /   /${g}      \`.    \`-.${R}`,
+    `${lg}          |   \\${g}    ;   \\      \`-.${R}`,
+    `${lg}          |    \\${g}    \`.\`.; ${y}✉${R}`,
+    `${lg}           \\    \`-.   \\\\\\${R}`,
+    `${lg}            \`.     \`-.  \`\\${R}`,
+    `${lg}              \`-.....\`\\-.))\\${R}`,
+    `${o}                \`._ /   \`-\`${R}`,
+    `${o}                  / /${R}`,
+    `${o}                 /=(_${R}`,
+    `${o}              -./--' \`${R}`,
   ].join('\n');
 }
 
@@ -45,6 +52,7 @@ ${logo()}
   ${b}${cy}pigeon${R} — send WhatsApp messages from your terminal
 
   ${b}Usage:${R}
+    ${y}pigeon status${R}                         check if linked
     ${y}pigeon setup${R}                          link your WhatsApp account
     ${y}pigeon send ${g}"Name" "Message"${R}         send a one-shot message
     ${y}pigeon chat ${g}"Name"${R}                   interactive chat (incoming on)
@@ -77,15 +85,17 @@ async function findContact(client, nameQuery) {
 function createClient() {
   return new Client({
     authStrategy: new LocalAuth({ dataPath: SESSION_PATH }),
-    puppeteer: { args: ['--no-sandbox', '--disable-setuid-sandbox'] },
+    deviceName: 'pigeon',
+    puppeteer: { executablePath: '/usr/bin/google-chrome', args: ['--no-sandbox', '--disable-setuid-sandbox'] },
   });
 }
 
 async function initClient(client) {
   return new Promise((resolve, reject) => {
-    client.on('qr', qr => {
-      console.log('\nScan this QR code with WhatsApp on your phone:');
-      qrcode.generate(qr, { small: true });
+    client.on('qr', async qr => {
+      const str = await QRCode.toString(qr, { type: 'utf8', margin: 0 });
+      console.log('\nScan with WhatsApp → Linked Devices → Link a Device:\n');
+      console.log(str);
     });
     client.on('ready', () => resolve());
     client.on('auth_failure', () => reject(new Error('Authentication failed')));
@@ -96,6 +106,40 @@ async function initClient(client) {
 function prompt(question) {
   const rl = readline.createInterface({ input: process.stdin, output: process.stdout });
   return new Promise(resolve => rl.question(question, ans => { rl.close(); resolve(ans.trim()); }));
+}
+
+async function cmdStatus() {
+  const sessionExists = fs.existsSync(SESSION_PATH) &&
+    fs.readdirSync(SESSION_PATH).length > 0;
+
+  if (!sessionExists) {
+    console.log(`${C.yellow}○${C.reset} Not linked — run ${C.bold}pigeon setup${C.reset} to connect`);
+    return;
+  }
+
+  process.stdout.write(`${C.dim}Checking session...${C.reset}`);
+  const client = createClient();
+
+  const result = await new Promise(resolve => {
+    const timer = setTimeout(() => resolve('timeout'), 30000);
+    client.on('ready', () => { clearTimeout(timer); resolve('ready'); });
+    client.on('qr', () => { clearTimeout(timer); resolve('expired'); });
+    client.on('auth_failure', () => { clearTimeout(timer); resolve('expired'); });
+    client.initialize();
+  });
+
+  process.stdout.write('\r' + ' '.repeat(30) + '\r');
+
+  if (result === 'ready') {
+    const info = client.info;
+    console.log(`${C.green}✓ Linked${C.reset} — ${C.bold}${info?.pushname || 'WhatsApp'}${C.reset} (${info?.wid?.user || ''})`);
+  } else if (result === 'expired') {
+    console.log(`${C.yellow}○${C.reset} Session expired — run ${C.bold}pigeon setup${C.reset} to re-link`);
+  } else {
+    console.log(`${C.yellow}○${C.reset} Could not reach WhatsApp — check your connection`);
+  }
+
+  await client.destroy();
 }
 
 async function cmdSetup() {
@@ -186,7 +230,9 @@ async function main() {
   const args = process.argv.slice(2);
   const cmd = args[0];
 
-  if (cmd === 'setup') {
+  if (cmd === 'status') {
+    await cmdStatus();
+  } else if (cmd === 'setup') {
     await cmdSetup();
   } else if (cmd === 'send') {
     const [, nameQuery, message] = args;
